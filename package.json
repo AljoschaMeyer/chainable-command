@@ -1,0 +1,29 @@
+{
+  "name": "chainable-command",
+  "version": "0.0.0",
+  "description": "Provides command objects with input-, output- and error-stream.",
+  "license": "MIT",
+  "repository": "AljoschaMeyer/chainable-command",
+  "author": {
+    "name": "AljoschaMeyer",
+    "email": "aljoscha.meyer@uni-oldenburg.de",
+    "url": "github.com/AljoschaMeyer"
+  },
+  "engines": {
+    "node": ">=0.10.0"
+  },
+  "scripts": {
+    "test": "xo && ava"
+  },
+  "files": [
+    "index.js"
+  ],
+  "keywords": [
+    ""
+  ],
+  "dependencies": {},
+  "devDependencies": {
+    "ava": "^0.11.0",
+    "xo": "^0.12.1"
+  }
+}
