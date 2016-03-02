@@ -245,6 +245,7 @@ test.cb('this.stderr() in a lifecycle function pushes to stderr of the CommandIn
 		},
 		cleanup: function () {
 			this.stderr(data, enc);
+			t.end();
 			return Promise.resolve();
 		}
 	});
@@ -259,10 +260,6 @@ test.cb('this.stderr() in a lifecycle function pushes to stderr of the CommandIn
 	});
 
 	cmd.start();
-
-	setTimeout(() => {
-		t.end();
-	}, 500);
 });
 
 test.cb('this.stdout() in a lifecycle function pushes to stdout of the CommandInstance', t => {
@@ -285,6 +282,7 @@ test.cb('this.stdout() in a lifecycle function pushes to stdout of the CommandIn
 			this.stdout(data, enc);
 			this.stdout(data, enc);
 			this.stdout(data, enc);
+			t.end();
 			return Promise.resolve();
 		}
 	});
@@ -299,8 +297,146 @@ test.cb('this.stdout() in a lifecycle function pushes to stdout of the CommandIn
 	});
 
 	cmd.start();
+});
+
+test.cb('calling exit in a lifecycle function closes stdin', t => {
+	t.plan(2);
+
+	// test for init
+	const cmd1 = new CommandInstance({
+		init: function () {
+			this.exit();
+			return Promise.resolve();
+		}
+	});
+
+	cmd1.stdin.on('finish', () => {
+		t.pass();
+	});
+
+	cmd1.start();
+
+	// test for onInput
+	const cmd2 = new CommandInstance({
+		onInput: function () {
+			this.exit();
+			return Promise.resolve();
+		}
+	});
+
+	cmd2.stdin.on('finish', () => {
+		t.pass();
+	});
+
+	cmd2.on('ready', () => {
+		cmd2.stdin.write('foo');
+	});
+
+	cmd2.start();
+
+	// no test for cleanup, for cleanup to be called, stdin has to have been closed already
 
 	setTimeout(() => {
 		t.end();
 	}, 500);
+});
+
+test.cb('calling exit leads to cleanup being called', t => {
+	t.plan(1);
+
+	const cmd = new CommandInstance({
+		init: function () {
+			this.exit();
+			return Promise.resolve();
+		},
+		cleanup: function () {
+			t.pass();
+			t.end();
+			return Promise.resolve();
+		}
+	});
+
+	cmd.start();
+});
+
+test.cb('cleanup ends stdout and stderr', t => {
+	t.plan(2);
+
+	const cmd = new CommandInstance({
+		init: function () {
+			this.exit();
+			return Promise.resolve();
+		}
+	});
+
+	cmd.stdout.on('data', () => {});
+	cmd.stderr.on('data', () => {});
+
+	cmd.stdout.on('end', () => {
+		t.pass();
+	});
+
+	cmd.stderr.on('end', () => {
+		t.pass();
+		t.end();
+	});
+
+	cmd.start();
+});
+
+test.cb('if reaching cleanup without an exit call, the exit event has no msg and code 0', t => {
+	// test for init
+	const cmd = new CommandInstance();
+
+	cmd.on('ready', () => {
+		cmd.stdin.end();
+	});
+
+	cmd.on('exit', (code) => {
+		t.is(code, 0);
+		t.end();
+	});
+
+	cmd.start();
+});
+
+test.cb('calling exit sets the values for the exit event', t => {
+	const testCode = 42;
+	const testMsg = 'foo';
+	const cmd = new CommandInstance({
+		init: function () {
+			this.exit(testCode, testMsg);
+			return Promise.resolve();
+		}
+	});
+
+	cmd.on('exit', (code, msg) => {
+		t.is(code, testCode);
+		t.is(msg, testMsg);
+		t.end();
+	});
+
+	cmd.start();
+});
+
+test.cb('with multiple exit calls, the first one wins', t => {
+	const cmd = new CommandInstance({
+		onInput: function () {
+			this.exit(1, 'foo');
+			this.exit(2, 'bar');
+			return Promise.resolve();
+		}
+	});
+
+	cmd.on('exit', (code, msg) => {
+		t.is(code, 1);
+		t.is(msg, 'foo');
+		t.end();
+	});
+
+	cmd.on('ready', () => {
+		cmd.stdin.write('hi');
+	});
+
+	cmd.start();
 });

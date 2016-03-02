@@ -13,22 +13,22 @@ This module exports a `CommandInstance` class. A CommandInstance represents a co
 The behavior of a CommandInstance, i.e. what it does with input, and which output it produces, is defined through three lifecycle functions passed in the constructor options: `init`, `onInput` and `cleanup`.
 
 ### Lifecycle
-The CommandInstance lifecycle is started by calling `commandInstance.start()`.
+The CommandInstance lifecycle is started by calling `commandInstance.start()`. Pushing data to `commandInstance.stdin` before `start()` was called leads to an error.
 
 The `init` lifecycle function is invoked right after `commandInstance.start()` has been called and will only be called once. It has to return a promise. When the promise is resolved (TODO and `exit()` (see below) has not been called in `init`), a `'ready'` event is emitted by the CommandInstance, signaling that the `stdin` stream may now be written to.
 
 Each time data is written to `commandInstance.stdin`, the `onInput` lifecycle function is called with the received data and the encoding of the data, i.e. the first two arguments to `Writable._write()`. All incoming data before the CommandInstance has emitted its `'ready'` event is ignored. `onInit` has to return a promise.
 
-The `cleanup` lifecycle function is invoked exactly once, at the end of the CommandInstance lifecycle. It is guaranteed that `init` has been resolved before, and that no `onInput` will be invoked or resolved after `cleanup` has been called. `cleanup` has to return a promise as well. Aside from manually exiting the CommandInstance, `cleanup` is invoked when no further input will be received and no input is currently processed.
+The `cleanup` lifecycle function is invoked exactly once, at the end of the CommandInstance lifecycle. It is guaranteed that `init` has been resolved before, and that no `onInput` will be invoked or resolved after `cleanup` has been called. `cleanup` has to return a promise as well. Aside from manually exiting the CommandInstance, `cleanup` is invoked when no further input will be received and no input is currently processed. After cleanup is resolved, `stdout` and `stderr` of the CommandInstance are closed (by pushing null).
 
 The three lifecycle functions have some properties bound to `this`:
-- `options`: The hash passed to the CommanInstance constructor as `options.instanceOptions`
+- `options`: The hash passed to the CommandInstance constructor as `options.instanceOptions`
 - `stdout(data, enc)`: Pushes data to `commandInstance.stdout` with the encoding `enc` by calling `stream.Readable.push(data, enc)`.
 - `stderr(data, enc)`: Pushes data to `commandInstance.stderr` with the encoding `enc` by calling `stream.Readable.push(data, enc)`.
+- `exit(code, message)`: Causes the CommandInstance to close its input stream, wait for all currently processed input to resolve and then exits by calling `cleanup` and emitting an `'exit'` event. The `'exit'` event contains `code` and `message` All calls to this after the first call are no-ops.
 
 ### Notes
-- stdin cb error if not ready
-- prepareExit event? Or just end stdin?
+- TODO errors when pushing null
 
 ## License
 

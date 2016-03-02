@@ -24,6 +24,9 @@ function CommandInstance(options) {
 	// counts how many onInput calls are currently pending
 	var work = 0;
 
+	// stores the exit vcode and message as {code: int, msg: string}
+	var exit = null;
+
 	if (options === undefined) {
 		options = {};
 	}
@@ -38,6 +41,12 @@ function CommandInstance(options) {
 		},
 		stdout: function (data, enc) {
 			self.stdout.push(data, enc);
+		},
+		exit: function (code, msg) {
+			if (exit === null) {
+				exit = {code: code, msg: msg};
+				self.stdin.end();
+			}
 		}
 	};
 
@@ -67,7 +76,14 @@ function CommandInstance(options) {
 		} : options.cleanup;
 
 		var afterCleanup = function () {
-			// impl
+			self.stdout.push(null);
+			self.stderr.push(null);
+			if (exit === null) {
+				exit = {
+					code: 0
+				};
+			}
+			self.emit('exit', exit.code, exit.msg);
 		};
 
 		cleanupFn.bind(lifecycleSelf)().then(afterCleanup).catch(afterCleanup);
