@@ -576,3 +576,45 @@ test.cb('cleanup is called when the CommandInstance is killed and the last input
 
 	cmd.start();
 });
+
+test('inputClosed is emitted when stdin is ended', t => {
+	t.plan(1);
+
+	const cmd = new CommandInstance();
+
+	cmd.on('inputClosed', () => {
+		t.pass();
+	});
+
+	cmd.stdin.end();
+});
+
+test('inputClosed when the CommandInstance is killed', t => {
+	t.plan(1);
+
+	const cmd = new CommandInstance();
+
+	cmd.on('inputClosed', () => {
+		t.pass();
+	});
+
+	cmd.kill();
+});
+
+test.cb('calling exit leads to inputClosed being emitted', t => {
+	t.plan(1);
+
+	const cmd = new CommandInstance({
+		init: function () {
+			this.exit();
+			return Promise.resolve();
+		}
+	});
+
+	cmd.on('inputClosed', () => {
+		t.pass();
+		t.end();
+	});
+
+	cmd.start();
+});

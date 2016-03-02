@@ -10,7 +10,7 @@ This is a low-level implementation. For more convenient usage, see TODO.
 ### General
 This module exports a `CommandInstance` class. A CommandInstance represents a command in a command chain. It communicates via three streams: A writable `stdin`, a readable `stdout` and a readable `stderr`. In a typical usecase, the `stdout` of a CommandInstance would be piped into the `stdin` of the next command instance.
 
-The CommandInstance communicates with the outside through two events (`ready` and `exit`) and two functions (`start` and `kill`).
+The CommandInstance communicates with the outside through events (`ready`, `inputClosed` and `exit`) and two functions (`start` and `kill`).
 
 The behavior of a CommandInstance, i.e. what it does with input, and which output it produces, is defined through three lifecycle functions passed in the constructor options: `init`, `onInput` and `cleanup`.
 
@@ -28,6 +28,48 @@ The three lifecycle functions have some properties bound to `this`:
 - `stdout(data, enc)`: Pushes data to `commandInstance.stdout` with the encoding `enc` by calling `stream.Readable.push(data, enc)`.
 - `stderr(data, enc)`: Pushes data to `commandInstance.stderr` with the encoding `enc` by calling `stream.Readable.push(data, enc)`.
 - `exit(code, message)`: Causes the CommandInstance to close its input stream, wait for all currently processed input to resolve and then exits by calling `cleanup` and emitting an `'exit'` event. The `'exit'` event contains `code` and `message` All calls to this after the first call are no-ops.
+
+## API
+`import CommandInstance from 'chainable-command';`
+
+Instances of CommandInstance are EventEmitters.
+
+#### Events:
+- `'ready'`: The CommandInstance is ready to process input. Writing to `instance.stdin` before the `'ready'` event was emited will throw an error.
+- `'inputClosed'`: Emitted when `instance.stdin` stops accepting input.
+- `'exit'`: The CommandInstance has reached the end of its lifecycle. All streams are closed, no input is still processed. Emitting this event is the last thing a CommandInstance does.
+  - `code`: The exit code. Defaults to `0` if it has not been explicitely set in one of the lifecycle functions via `exit(code, msg)`.
+  - `msg`: The optional message set with `exit(code, msg)`. Defaults to `undefined`.
+
+### Constructor:
+`new CommandInstance(options);`
+
+Supported options:
+
+- `instanceOptions`: This is available to the lifecycle functions as `this.options`.
+- `init()`: The init lifecycle function is called exactly once, just before the CommandInstance starts accepting input. Has to return a promise.
+- `onInput(chunk, encoding)`: The onInput lifecycle function is called once for each input received via `instance.stdin` with the received chunk and encoding as arguments. Has to return a promise.
+- `cleanup()`: The cleanup lifecycle function is called exactly once, just before the CommandInstance emits the `'exit'` event. Has to return a promise.
+
+### Fields
+
+- `stdin`: A writable stream to which may be written between the `'ready'` and `'inputClosed'` events. Each write leads to `onInput()` being called with the written chunk and encoding.
+- `stdout`: A readable stream which may push data during the lifecycle functions.
+- `stderr`: A readable stream which may push data during the lifecycle functions.
+
+### Instance Methods:
+
+- `start()`: Signals the CommandInstance to start its lifecycle. The streams should be connected before this is called.
+- `kill()`: Signals the CommandInstance to end its lifecycle. It stops accepting new input. Calling does not interrupt `onInput` calls which are currently processing input, but it sets a flag which `onInput` can check to see whether it should terminate early.
+
+### Context for the lifecycle functions
+Inside the lifecycle functions (`init`, `onInput` and `cleanup`), `this` is bound to a special lifecycle context, which provides the following fields:
+
+- `options`: The options passed to this CommandInstance as `options.instanceOptions`.
+- `killed`: A flag indicating whether kill has been called for this CommandInstance.
+- `stdout(data, encoding)`: Calling this function will write the given `data` to `instance.stdout` with the given `encoding`. Throws an error if `data` is `null`.
+- `stderr(data, encoding)`: Calling this function will write the given `data` to `instance.stderr` with the given `encoding`. Throws an error if `data` is `null`.
+- `exit(code, message)`: Calling this function signals the CommandInstance to stop taking input and to terminate once all currently processd input is finished. `code` and `message` are used for the `'exit'` event emitted at the very end of the lifecycle. The `code` end `message` for the first call to `exit` are used. If the command terminates without an explicit call to `exit`, the `code` for the `'exit'` event is `0` and the `msg` is `undefined`.
 
 ## License
 

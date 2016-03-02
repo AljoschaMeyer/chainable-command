@@ -106,6 +106,7 @@ function CommandInstance(options) {
 	// signals to close input, wait for onInputs to resolve and then cleanup
 	var prepareExit = function () {
 		shouldCleanup = true;
+		self.emit('inputClosed');
 		tryCleanup();
 	};
 
