@@ -47,6 +47,9 @@ Instances of CommandInstance are EventEmitters.
 Supported options:
 
 - `instanceOptions`: This is available to the lifecycle functions as `this.options`.
+- `stdinOptions`: These options are passed to the `stream.Writable` constructor of `instance.stdin`.
+- `stdoutOptions`: These options are passed to the `stream.Readable` constructor of `instance.stdout`.
+- `stderrOptions`: These options are passed to the `stream.Readable` constructor of `instance.stderr`.
 - `init()`: The init lifecycle function is called exactly once, just before the CommandInstance starts accepting input. Has to return a promise.
 - `onInput(chunk, encoding)`: The onInput lifecycle function is called once for each input received via `instance.stdin` with the received chunk and encoding as arguments. Has to return a promise.
 - `cleanup()`: The cleanup lifecycle function is called exactly once, just before the CommandInstance emits the `'exit'` event. Has to return a promise.

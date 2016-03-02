@@ -12,9 +12,9 @@ function CommandInstance(options) {
 		options = {};
 	}
 
-	this.stdin = new stream.Writable();
-	this.stdout = new stream.Readable();
-	this.stderr = new stream.Readable();
+	this.stdin = new stream.Writable(options.stdinOptions);
+	this.stdout = new stream.Readable(options.stdoutOptions);
+	this.stderr = new stream.Readable(options.stderrOptions);
 
 	// flag indicating whether start has been called already
 	var hasStarted = false;
