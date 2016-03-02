@@ -3,43 +3,26 @@
 
 > Provides command objects with input-, output- and error-stream.
 
+## Overview
 
-## Install
+This is a low-level implementation. For more convenient usage, see TODO.
 
-```
-$ npm install --save chainable-command
-```
+### General
+This module exports a `CommandInstance` class. A CommandInstance represents a command in a command chain. It communicates via three streams: A writable `stdin`, a readable `stdout` and a readable `stderr`. In a typical usecase, the `stdout` of a CommandInstance would be piped into the `stdin` of the next command instance.
 
+The behavior of a CommandInstance, i.e. what it does with input, and which output it produces, is defined through three lifecycle functions passed in the constructor options: `init`, `onInput` and `cleanup`.
 
-## Usage
+### Lifecycle
+The CommandInstance lifecycle is started by calling `commandInstance.start()`.
 
-```js
-const chainableCommand = require('chainable-command');
+The `init` lifecycle function is invoked right after `commandInstance.start()` has been called and will only be called once. It has to return a promise. When the promise is resolved (TODO and `exit()` (see below) has not been called in `init`), a `'ready'` event is emitted by the CommandInstance, signaling that the `stdin` stream may now be written to.
 
-chainableCommand('unicorns');
-//=> 'unicorns & rainbows'
-```
+Each time data is written to `commandInstance.stdin`, the `onInput` lifecycle function is called with the received data and the encoding of the data, i.e. the first two arguments to `Writable._write()`. All incoming data before the CommandInstance has emitted its `'ready'` event is ignored. `onInit` has to return a promise.
 
+The `cleanup` lifecycle function is invoked exactly once, at the end of the CommandInstance lifecycle. It is guaranteed that `init` has been resolved before, and that no `onInput` will be invoked or resolved after `cleanup` has been called. `cleanup` has to return a promise as well. Aside from manually exiting the CommandInstance, `cleanup` is invoked when no further input will be received and no input is currently processed.
 
-## API
-
-### chainableCommand(input, [options])
-
-#### input
-
-Type: `string`
-
-Lorem ipsum.
-
-#### options
-
-##### foo
-
-Type: `boolean`<br>
-Default: `false`
-
-Lorem ipsum.
-
+### Notes
+- stdin cb error if not ready
 
 ## License
 
