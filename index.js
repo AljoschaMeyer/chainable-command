@@ -36,6 +36,7 @@ function CommandInstance(options) {
 
 	var lifecycleSelf = {
 		options: options.instanceOptions,
+		killed: false,
 		stderr: function (data, enc) {
 			if (data === null) {
 				throw new Error('A CommandInstance may not write null to its stderr');
@@ -150,9 +151,15 @@ function CommandInstance(options) {
 	*/
 	this.stderr._read = function () {};
 
-	// The exposed function which begins the CommandInstance lifecycle.
+	// The exposed function which begins the CommandInstance lifecycle
 	this.start = function () {
 		init();
+	};
+
+	// The exposed function which signals that this should terminate
+	this.kill = function () {
+		lifecycleSelf.killed = true;
+		prepareExit();
 	};
 }
 util.inherits(CommandInstance, EventEmitter);

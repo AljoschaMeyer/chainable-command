@@ -496,3 +496,83 @@ test.cb('writing null to stdout throws an error', t => {
 		cmd.start();
 	});
 });
+
+test('has a kill() method', t => {
+	const cmd = new CommandInstance();
+	t.is(typeof cmd.kill, 'function');
+});
+
+test('this.killed in lifecycle methods is false by default', t => {
+	const cmd = new CommandInstance({
+		init: function () {
+			t.false(this.killed);
+			return Promise.resolve();
+		}
+	});
+
+	cmd.start();
+});
+
+test('this.killed in lifecycle methods is true after killed was called', t => {
+	const cmd = new CommandInstance({
+		init: function () {
+			t.true(this.killed);
+			return Promise.resolve();
+		}
+	});
+
+	cmd.kill();
+	cmd.start();
+});
+
+test('cleanup is called when the CommandInstance is killed and no input is processed', t => {
+	t.plan(1);
+
+	const cmd = new CommandInstance({
+		cleanup: () => {
+			t.pass();
+			return Promise.resolve();
+		}
+	});
+
+	cmd.kill();
+});
+
+test.cb('cleanup is called when the CommandInstance is killed and the last input finishes processing', t => {
+	// indicate whether cleanup has been called
+	let flag = false;
+
+	const cmd = new CommandInstance({
+		onInput: () => {
+			return new Promise((resolve) => {
+				setTimeout(() => {
+					resolve();
+				}, 500);
+			});
+		},
+		cleanup: () => {
+			flag = true;
+			return Promise.resolve();
+		}
+	});
+
+	cmd.on('ready', () => {
+		cmd.stdin.write('Hi!');
+		cmd.stdin.write('Hi!');
+		cmd.stdin.write('Hi!');
+		cmd.kill();
+
+		setTimeout(() => {
+			// cleanup has not been called while onInput is still working
+			t.false(flag);
+		}, 250);
+
+		setTimeout(() => {
+			// cleanup was called by now
+			t.true(flag);
+			t.end();
+		}, 1000);
+	});
+
+	cmd.start();
+});

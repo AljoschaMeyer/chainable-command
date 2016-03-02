@@ -10,6 +10,8 @@ This is a low-level implementation. For more convenient usage, see TODO.
 ### General
 This module exports a `CommandInstance` class. A CommandInstance represents a command in a command chain. It communicates via three streams: A writable `stdin`, a readable `stdout` and a readable `stderr`. In a typical usecase, the `stdout` of a CommandInstance would be piped into the `stdin` of the next command instance.
 
+The CommandInstance communicates with the outside through two events (`ready` and `exit`) and two functions (`start` and `kill`).
+
 The behavior of a CommandInstance, i.e. what it does with input, and which output it produces, is defined through three lifecycle functions passed in the constructor options: `init`, `onInput` and `cleanup`.
 
 ### Lifecycle
