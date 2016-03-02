@@ -21,8 +21,14 @@ Each time data is written to `commandInstance.stdin`, the `onInput` lifecycle fu
 
 The `cleanup` lifecycle function is invoked exactly once, at the end of the CommandInstance lifecycle. It is guaranteed that `init` has been resolved before, and that no `onInput` will be invoked or resolved after `cleanup` has been called. `cleanup` has to return a promise as well. Aside from manually exiting the CommandInstance, `cleanup` is invoked when no further input will be received and no input is currently processed.
 
+The three lifecycle functions have some properties bound to `this`:
+- `options`: The hash passed to the CommanInstance constructor as `options.instanceOptions`
+- `stdout(data, enc)`: Pushes data to `commandInstance.stdout` with the encoding `enc` by calling `stream.Readable.push(data, enc)`.
+- `stderr(data, enc)`: Pushes data to `commandInstance.stderr` with the encoding `enc` by calling `stream.Readable.push(data, enc)`.
+
 ### Notes
 - stdin cb error if not ready
+- prepareExit event? Or just end stdin?
 
 ## License
 

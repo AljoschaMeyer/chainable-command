@@ -146,6 +146,7 @@ test('cleanup is called when stdin is ended and no input is processed', t => {
 	const cmd = new CommandInstance({
 		cleanup: () => {
 			t.pass();
+			return Promise.resolve();
 		}
 	});
 
@@ -166,6 +167,7 @@ test.cb('cleanup is called when stdin is ended and the last input finishes proce
 		},
 		cleanup: () => {
 			flag = true;
+			return Promise.resolve();
 		}
 	});
 
@@ -188,4 +190,117 @@ test.cb('cleanup is called when stdin is ended and the last input finishes proce
 	});
 
 	cmd.start();
+});
+
+test.cb('lifecycle functions have access to options.instanceOptions as this.options', t => {
+	const opt = {
+		foo: 'bar'
+	};
+
+	const cmd = new CommandInstance({
+		instanceOptions: opt,
+		init: function () {
+			t.is(this.options, opt);
+			return Promise.resolve();
+		},
+		onInput: function () {
+			t.is(this.options, opt);
+			return Promise.resolve();
+		},
+		cleanup: function () {
+			t.is(this.options, opt);
+			t.end();
+			return Promise.resolve();
+		}
+	});
+
+	cmd.on('ready', () => {
+		cmd.stdin.write('Hi!');
+	});
+
+	cmd.start();
+
+	setTimeout(() => {
+		cmd.stdin.end();
+	}, 500);
+});
+
+test.cb('this.stderr() in a lifecycle function pushes to stderr of the CommandInstance', t => {
+	t.plan(6);
+
+	const data = 'foo';
+	const enc = 'utf8';
+
+	const cmd = new CommandInstance({
+		init: function () {
+			this.stderr(data, enc);
+			this.stderr(data, enc);
+			this.stderr(data, enc);
+			return Promise.resolve();
+		},
+		onInput: function () {
+			this.stderr(data, enc);
+			this.stderr(data, enc);
+			return Promise.resolve();
+		},
+		cleanup: function () {
+			this.stderr(data, enc);
+			return Promise.resolve();
+		}
+	});
+
+	cmd.stderr.on('data', (chunk) => {
+		t.same(chunk, new Buffer(data, enc));
+	});
+
+	cmd.on('ready', () => {
+		cmd.stdin.write('Hi!');
+		cmd.stdin.end();
+	});
+
+	cmd.start();
+
+	setTimeout(() => {
+		t.end();
+	}, 500);
+});
+
+test.cb('this.stdout() in a lifecycle function pushes to stdout of the CommandInstance', t => {
+	t.plan(6);
+
+	const data = 'foo';
+	const enc = 'utf8';
+
+	const cmd = new CommandInstance({
+		init: function () {
+			this.stdout(data, enc);
+			this.stdout(data, enc);
+			return Promise.resolve();
+		},
+		onInput: function () {
+			this.stdout(data, enc);
+			return Promise.resolve();
+		},
+		cleanup: function () {
+			this.stdout(data, enc);
+			this.stdout(data, enc);
+			this.stdout(data, enc);
+			return Promise.resolve();
+		}
+	});
+
+	cmd.stdout.on('data', (chunk) => {
+		t.same(chunk, new Buffer(data, enc));
+	});
+
+	cmd.on('ready', () => {
+		cmd.stdin.write('Hi!');
+		cmd.stdin.end();
+	});
+
+	cmd.start();
+
+	setTimeout(() => {
+		t.end();
+	}, 500);
 });

@@ -28,32 +28,62 @@ function CommandInstance(options) {
 		options = {};
 	}
 
-	/*
-	* Set lifecycle methods.
-	*/
-	var init = options.init;
-	if (init === undefined) {
-		// The default init function does nothing but resolve a promise.
-		init = function () {
-			return Promise.resolve();
-		};
-	}
+	// used in some function definitions
+	var self = this;
 
-	var cleanup = options.cleanup;
-	if (cleanup === undefined) {
-		// The default cleanup function does nothing but resolve a promise.
-		cleanup = function () {
-			return Promise.resolve();
-		};
-	}
+	var lifecycleSelf = {
+		options: options.instanceOptions,
+		stderr: function (data, enc) {
+			self.stderr.push(data, enc);
+		},
+		stdout: function (data, enc) {
+			self.stdout.push(data, enc);
+		}
+	};
 
-	// set shouldCleanup to true. Call cleanup if valid.
+	// define the init function internally, which at some point calls options.init
+	var init = function () {
+		var initFn = options.init === undefined ? function () {
+			return Promise.resolve();
+		} : options.init;
+
+		var afterInit = function () {
+			if (!shouldCleanup) {
+				isReady = true;
+				self.emit('ready');
+			}
+		};
+
+		if (!hasStarted) {
+			hasStarted = true;
+			initFn.bind(lifecycleSelf)().then(afterInit).catch(afterInit);
+		}
+	};
+
+	// define the cleanup function internally, which at some point calls options.cleanup
+	var cleanup = function () {
+		var cleanupFn = options.cleanup === undefined ? function () {
+			return Promise.resolve();
+		} : options.cleanup;
+
+		var afterCleanup = function () {
+			// impl
+		};
+
+		cleanupFn.bind(lifecycleSelf)().then(afterCleanup).catch(afterCleanup);
+	};
+
+	// Checks whether the CommandInstance may cleanup and if so does it.
 	var tryCleanup = function () {
-		shouldCleanup = true;
-
-		if (work === 0) {
+		if (work === 0 && shouldCleanup) {
 			cleanup();
 		}
+	};
+
+	// signals to close input, wait for onInputs to resolve and then cleanup
+	var prepareExit = function () {
+		shouldCleanup = true;
+		tryCleanup();
 	};
 
 	// define the onInput function internally, which at some point calls options.onInput
@@ -68,7 +98,7 @@ function CommandInstance(options) {
 		};
 
 		work++;
-		onInputFn(chunk, enc).then(afterInput).catch(afterInput);
+		onInputFn.bind(lifecycleSelf)(chunk, enc).then(afterInput).catch(afterInput);
 	};
 
 	/*
@@ -76,33 +106,31 @@ function CommandInstance(options) {
 	*/
 	// delegate input to onInput
 	this.stdin._write = function (chunc, enc, cb) {
-		if (isReady) {
+		if (isReady && !shouldCleanup) {
 			onInput(chunc, enc);
 			cb();
 		} else {
-			cb(new Error('Discarding input, CommandInstance is not ready yet.'));
+			cb(new Error(shouldCleanup ? 'Discarding input, CommandInstance is preparing to exit' : 'Discarding input, CommandInstance is not ready yet.'));
 		}
 	};
 	// ready to end CommandInstance if stdin is ended
 	this.stdin.on('finish', function () {
-		tryCleanup();
+		prepareExit();
 	});
+
+	/*
+	* implementation of stdout
+	*/
+	this.stdout._read = function () {};
+
+	/*
+	* implementation of stderr
+	*/
+	this.stderr._read = function () {};
 
 	// The exposed function which begins the CommandInstance lifecycle.
 	this.start = function () {
-		var self = this;
-		// TODO move afterInit into init itself
-		var afterInit = function () {
-			if (!shouldCleanup) {
-				isReady = true;
-				self.emit('ready');
-			}
-		};
-
-		if (!hasStarted) {
-			hasStarted = true;
-			init().then(afterInit).catch(afterInit);
-		}
+		init();
 	};
 }
 util.inherits(CommandInstance, EventEmitter);
