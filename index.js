@@ -8,6 +8,10 @@ module.exports = CommandInstance;
 function CommandInstance(options) {
 	EventEmitter.call(this);
 
+	if (options === undefined) {
+		options = {};
+	}
+
 	this.stdin = new stream.Writable();
 	this.stdout = new stream.Readable();
 	this.stderr = new stream.Readable();
@@ -24,16 +28,13 @@ function CommandInstance(options) {
 	// counts how many onInput calls are currently pending
 	var work = 0;
 
-	// stores the exit vcode and message as {code: int, msg: string}
+	// stores the exit code and message as {code: int, msg: string}
 	var exit = null;
-
-	if (options === undefined) {
-		options = {};
-	}
 
 	// used in some function definitions
 	var self = this;
 
+	// the supplied lifecycle functions are bound to lifecycleSelf
 	var lifecycleSelf = {
 		options: options.instanceOptions,
 		killed: false,
@@ -59,6 +60,7 @@ function CommandInstance(options) {
 
 	// define the init function internally, which at some point calls options.init
 	var init = function () {
+		// use the supplied function or a default if none was given
 		var initFn = options.init === undefined ? function () {
 			return Promise.resolve();
 		} : options.init;
@@ -70,6 +72,7 @@ function CommandInstance(options) {
 			}
 		};
 
+		// ensure init is called only once
 		if (!hasStarted) {
 			hasStarted = true;
 			initFn.bind(lifecycleSelf)().then(afterInit).catch(afterInit);
@@ -78,6 +81,7 @@ function CommandInstance(options) {
 
 	// define the cleanup function internally, which at some point calls options.cleanup
 	var cleanup = function () {
+		// use the supplied function or a default if none was given
 		var cleanupFn = options.cleanup === undefined ? function () {
 			return Promise.resolve();
 		} : options.cleanup;
@@ -85,6 +89,7 @@ function CommandInstance(options) {
 		var afterCleanup = function () {
 			self.stdout.push(null);
 			self.stderr.push(null);
+			// set default for the exit code
 			if (exit === null) {
 				exit = {
 					code: 0
@@ -112,6 +117,7 @@ function CommandInstance(options) {
 
 	// define the onInput function internally, which at some point calls options.onInput
 	var onInput = function (chunk, enc) {
+		// use the supplied function or a default if none was given
 		var onInputFn =	options.onInput === undefined ? function () {
 			return Promise.resolve();
 		} : options.onInput;
