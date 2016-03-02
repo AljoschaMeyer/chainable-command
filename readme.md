@@ -5,7 +5,7 @@
 
 ## Overview
 
-This is a low-level implementation. For more convenient usage, see TODO.
+This is a low-level implementation of a command class which communicates with other commands via streams.
 
 ### General
 This module exports a `CommandInstance` class. A CommandInstance represents a command in a command chain. It communicates via three streams: A writable `stdin`, a readable `stdout` and a readable `stderr`. In a typical usecase, the `stdout` of a CommandInstance would be piped into the `stdin` of the next command instance.
@@ -17,7 +17,7 @@ The behavior of a CommandInstance, i.e. what it does with input, and which outpu
 ### Lifecycle
 The CommandInstance lifecycle is started by calling `commandInstance.start()`. Pushing data to `commandInstance.stdin` before `start()` was called leads to an error.
 
-The `init` lifecycle function is invoked right after `commandInstance.start()` has been called and will only be called once. It has to return a promise. When the promise is resolved (TODO and `exit()` (see below) has not been called in `init`), a `'ready'` event is emitted by the CommandInstance, signaling that the `stdin` stream may now be written to.
+The `init` lifecycle function is invoked right after `commandInstance.start()` has been called and will only be called once. It has to return a promise. When the promise is resolved (and `exit()` (see below) has not been called in `init`), a `'ready'` event is emitted by the CommandInstance, signaling that the `stdin` stream may now be written to.
 
 Each time data is written to `commandInstance.stdin`, the `onInput` lifecycle function is called with the received data and the encoding of the data, i.e. the first two arguments to `Writable._write()`. All incoming data before the CommandInstance has emitted its `'ready'` event is ignored. `onInit` has to return a promise.
 
