@@ -440,3 +440,59 @@ test.cb('with multiple exit calls, the first one wins', t => {
 
 	cmd.start();
 });
+
+test.cb('lifecycle functions can communicate by setting attributes of this', t => {
+	const cmd = new CommandInstance({
+		init: function () {
+			this.foo = 'bar';
+			return Promise.resolve();
+		},
+		onInput: function () {
+			t.is(this.foo, 'bar');
+			t.end();
+			return Promise.resolve();
+		}
+	});
+
+	cmd.on('ready', () => {
+		cmd.stdin.write('hi');
+	});
+
+	cmd.start();
+});
+
+test.cb('writing null to stderr throws an error', t => {
+	const cmd = new CommandInstance({
+		init: function () {
+			this.stderr(null);
+			return Promise.resolve();
+		}
+	});
+
+	setTimeout(() => {
+		t.end();
+		return Promise.resolve();
+	}, 500);
+
+	t.throws(() => {
+		cmd.start();
+	});
+});
+
+test.cb('writing null to stdout throws an error', t => {
+	const cmd = new CommandInstance({
+		init: function () {
+			this.stdout(null);
+			return Promise.resolve();
+		}
+	});
+
+	setTimeout(() => {
+		t.end();
+		return Promise.resolve();
+	}, 500);
+
+	t.throws(() => {
+		cmd.start();
+	});
+});

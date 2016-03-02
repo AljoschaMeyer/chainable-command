@@ -27,9 +27,6 @@ The three lifecycle functions have some properties bound to `this`:
 - `stderr(data, enc)`: Pushes data to `commandInstance.stderr` with the encoding `enc` by calling `stream.Readable.push(data, enc)`.
 - `exit(code, message)`: Causes the CommandInstance to close its input stream, wait for all currently processed input to resolve and then exits by calling `cleanup` and emitting an `'exit'` event. The `'exit'` event contains `code` and `message` All calls to this after the first call are no-ops.
 
-### Notes
-- TODO errors when pushing null
-
 ## License
 
 MIT © [AljoschaMeyer](https://github.com/AljoschaMeyer)

@@ -37,9 +37,15 @@ function CommandInstance(options) {
 	var lifecycleSelf = {
 		options: options.instanceOptions,
 		stderr: function (data, enc) {
+			if (data === null) {
+				throw new Error('A CommandInstance may not write null to its stderr');
+			}
 			self.stderr.push(data, enc);
 		},
 		stdout: function (data, enc) {
+			if (data === null) {
+				throw new Error('A CommandInstance may not write null to its stdout');
+			}
 			self.stdout.push(data, enc);
 		},
 		exit: function (code, msg) {
