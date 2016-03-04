@@ -19,9 +19,6 @@ function CommandInstance(options) {
 	// flag indicating whether start has been called already
 	var hasStarted = false;
 
-	// flag indicating whether init has been resolved already
-	var isReady = false;
-
 	// flag indicating whether this is waiting to call cleanup
 	var shouldCleanup = false;
 
@@ -67,7 +64,7 @@ function CommandInstance(options) {
 
 		var afterInit = function () {
 			if (!shouldCleanup) {
-				isReady = true;
+				self.stdin.uncork();
 				self.emit('ready');
 			}
 		};
@@ -134,13 +131,17 @@ function CommandInstance(options) {
 	/*
 	* implementation of stdin
 	*/
+
+	// force buffering of all input until the CommandInstance has been initialized
+	this.stdin.cork();
+
 	// delegate input to onInput
 	this.stdin._write = function (chunc, enc, cb) {
-		if (isReady && !shouldCleanup) {
+		if (shouldCleanup) {
+			cb(new Error('Discarding input, CommandInstance is preparing to exit'));
+		} else {
 			onInput(chunc, enc);
 			cb();
-		} else {
-			cb(new Error(shouldCleanup ? 'Discarding input, CommandInstance is preparing to exit' : 'Discarding input, CommandInstance is not ready yet.'));
 		}
 	};
 	// ready to end CommandInstance if stdin is ended
@@ -151,12 +152,16 @@ function CommandInstance(options) {
 	/*
 	* implementation of stdout
 	*/
-	this.stdout._read = function () {};
+	this.stdout._read = function () {
+		// no-op
+	};
 
 	/*
 	* implementation of stderr
 	*/
-	this.stderr._read = function () {};
+	this.stderr._read = function () {
+		// no-op
+	};
 
 	// The exposed function which begins the CommandInstance lifecycle
 	this.start = function () {

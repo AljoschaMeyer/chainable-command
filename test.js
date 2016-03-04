@@ -86,23 +86,25 @@ test.cb('after init is resolved, a \'ready\' event is emitted', t => {
 	}, 1000);
 });
 
-test.cb('writing to stdin before ready gives an error', t => {
-	// expect 1 error for the write before ready, but none for the call afterwards
-	t.plan(1);
+test.cb('writing to stdin before ready triggers onInput after initialization (in the correct order)', t => {
+	var inputCounter = 0;
 
-	const cmd = new CommandInstance();
-	cmd.stdin.on('error', () => {
-		t.pass();
+	const cmd = new CommandInstance({
+		onInput: function (input) {
+			if (inputCounter === 0) {
+				t.same(input, new Buffer('foo'));
+			} else {
+				t.same(input, new Buffer('bar'));
+				t.end();
+			}
+			inputCounter++;
+			return Promise.resolve();
+		}
 	});
 
-	// write again when ready, don't expect error
-	cmd.on('ready', () => {
-		cmd.stdin.write('foo');
-		t.end();
-	});
-
-	// write before ready, expect error
+	// write before ready
 	cmd.stdin.write('foo');
+	cmd.stdin.write('bar');
 
 	cmd.start();
 });

@@ -86,10 +86,7 @@ fizzbuzzCommand.stderr.pipe(process.stderr);
 counterCommand.stdout.pipe(fizzbuzzCommand.stdin);
 counterCommand.stderr.pipe(process.stderr);
 
-fizzbuzzCommand.on('ready', function () {
-	counterCommand.start();
-});
-
+counterCommand.start();
 fizzbuzzCommand.start();
 
 /*
@@ -157,8 +154,5 @@ reverseCommand.stderr.pipe(process.stderr);
 outCommand.stdout.pipe(reverseCommand.stdin);
 outCommand.stderr.pipe(process.stderr);
 
-reverseCommand.on('ready', function () {
-	outCommand.start();
-});
-
+outCommand.start();
 reverseCommand.start();
