@@ -91,3 +91,74 @@ fizzbuzzCommand.on('ready', function () {
 });
 
 fizzbuzzCommand.start();
+
+/*
+* Example for simple asynchronous command chaining.
+*/
+
+/*
+* async output
+*/
+var initOut = function () {
+	var self = this;
+
+	return new Promise(function (resolve) {
+		setTimeout(function () {
+			self.stdout('foo');
+		}, 0);
+
+		setTimeout(function () {
+			self.stdout('bar');
+		}, 400);
+
+		setTimeout(function () {
+			self.stdout('baz');
+			self.exit(0);
+			resolve();
+		}, 800);
+	});
+};
+
+var outCommand = new CommandInstance({
+	init: initOut,
+	stdinOptions: {objectMode: true},
+	stdoutOptions: {objectMode: true},
+	stderrOptions: {objectMode: true}
+});
+
+/*
+* Async input handling
+*/
+
+var onInputReverse = function (input) {
+	var self = this;
+
+	return new Promise(function (resolve) {
+		setTimeout(function () {
+			self.stdout(input.split('').reverse().join('') + '\n');
+			resolve();
+		}, 50);
+	});
+};
+
+var reverseCommand = new CommandInstance({
+	onInput: onInputReverse,
+	stdinOptions: {objectMode: true},
+	stdoutOptions: {objectMode: true},
+	stderrOptions: {objectMode: true}
+});
+
+/*
+* Combined usage
+*/
+
+reverseCommand.stdout.pipe(process.stdout);
+reverseCommand.stderr.pipe(process.stderr);
+outCommand.stdout.pipe(reverseCommand.stdin);
+outCommand.stderr.pipe(process.stderr);
+
+reverseCommand.on('ready', function () {
+	outCommand.start();
+});
+
+reverseCommand.start();
