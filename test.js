@@ -227,6 +227,39 @@ test.cb('lifecycle functions have access to options.instanceOptions as this.opti
 	}, 500);
 });
 
+test.cb('lifecycle functions have access to options.operands as this.operands', t => {
+	const ops = {
+		foo: 'bar'
+	};
+
+	const cmd = new CommandInstance({
+		operands: ops,
+		init: function () {
+			t.is(this.operands, ops);
+			return Promise.resolve();
+		},
+		onInput: function () {
+			t.is(this.operands, ops);
+			return Promise.resolve();
+		},
+		cleanup: function () {
+			t.is(this.operands, ops);
+			t.end();
+			return Promise.resolve();
+		}
+	});
+
+	cmd.on('ready', () => {
+		cmd.stdin.write('Hi!');
+	});
+
+	cmd.start();
+
+	setTimeout(() => {
+		cmd.stdin.end();
+	}, 500);
+});
+
 test.cb('this.stderr() in a lifecycle function pushes to stderr of the CommandInstance', t => {
 	t.plan(6);
 

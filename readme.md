@@ -25,6 +25,7 @@ The `cleanup` lifecycle function is invoked exactly once, at the end of the Comm
 
 The three lifecycle functions have some properties bound to `this`:
 - `options`: The hash passed to the CommandInstance constructor as `options.instanceOptions`
+- `operands`: The object passed to the CommandInstance constructor as `options.operands`
 - `stdout(data, enc)`: Pushes data to `commandInstance.stdout` with the encoding `enc` by calling `stream.Readable.push(data, enc)`.
 - `stderr(data, enc)`: Pushes data to `commandInstance.stderr` with the encoding `enc` by calling `stream.Readable.push(data, enc)`.
 - `exit(code, message)`: Causes the CommandInstance to close its input stream, wait for all currently processed input to resolve and then exits by calling `cleanup` and emitting an `'exit'` event. The `'exit'` event contains `code` and `message` All calls to this after the first call are no-ops.
@@ -47,6 +48,7 @@ Instances of CommandInstance are EventEmitters.
 Supported options:
 
 - `instanceOptions`: This is available to the lifecycle functions as `this.options`.
+- `operands`: This is available to the lifecycle functions as `this.operands`.
 - `stdinOptions`: These options are passed to the `stream.Writable` constructor of `instance.stdin`.
 - `stdoutOptions`: These options are passed to the `stream.Readable` constructor of `instance.stdout`.
 - `stderrOptions`: These options are passed to the `stream.Readable` constructor of `instance.stderr`.

@@ -34,6 +34,7 @@ function CommandInstance(options) {
 	// the supplied lifecycle functions are bound to lifecycleSelf
 	var lifecycleSelf = {
 		options: options.instanceOptions,
+		operands: options.operands,
 		killed: false,
 		stderr: function (data, enc) {
 			if (data === null) {
