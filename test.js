@@ -512,38 +512,34 @@ test.cb('cleanup is called when the CommandInstance is killed and the last input
 
 	const cmd = new CommandInstance({
 		onInput: () => {
-			console.log('start onInput');
-			return Promise.resolve();
-			// return new Promise((resolve) => {
-				// setTimeout(() => {
-					// console.log('about to resolve onInput');
-					// resolve();
-				// }, 500);
-			// });
+			return new Promise((resolve) => {
+				setTimeout(() => {
+					resolve();
+				}, 500);
+			});
 		},
 		cleanup: () => {
-			console.log('called cleanup');
 			flag = true;
 			return Promise.resolve();
 		}
 	});
 
-	console.log('about to start');
 	cmd.start();
-	console.log('write 1');
 	cmd.stdin.write('Hi!');
-	console.log('write 2');
 	cmd.stdin.write('Hi!');
-	console.log('write 3');
 	cmd.stdin.write('Hi!');
-	console.log('about to kill');
-	cmd.kill();
+
+	// kill after init has resolved
+	setTimeout(() => {
+		console.log('about to kill');
+		cmd.kill();
+	}, 0);
 
 	setTimeout(() => {
 		// cleanup has not been called while onInput is still working
 		console.log('checking flag nr1');
 		t.false(flag);
-	}, 10);
+	}, 250);
 
 	setTimeout(() => {
 		// cleanup was called by now

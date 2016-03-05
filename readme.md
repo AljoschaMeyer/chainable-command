@@ -64,7 +64,7 @@ Supported options:
 ### Instance Methods:
 
 - `start()`: Signals the CommandInstance to start its lifecycle. The streams should be connected before this is called.
-- `kill()`: Signals the CommandInstance to end its lifecycle. It stops accepting new input. Calling does not interrupt `onInput` calls which are currently processing input, but it sets a flag which `onInput` can check to see whether it should terminate early.
+- `kill()`: Signals the CommandInstance to end its lifecycle. It stops accepting new input. Calling does not interrupt `onInput` calls which are currently processing input, but it sets a flag which `onInput` can check to see whether it should terminate early. If called before `init` has been resolved, no input is accepted.
 
 ### Context for the lifecycle functions
 Inside the lifecycle functions (`init`, `onInput` and `cleanup`), `this` is bound to a special lifecycle context, which provides the following fields:
