@@ -56,11 +56,11 @@ test('multiple start() calls do not execute init multiple times', t => {
 	cmd.start();
 });
 
-test.cb('writing to stdin before started triggers onInput after initialization (in the correct order)', t => {
+test.cb('writing to stdin before started triggers data after initialization (in the correct order)', t => {
 	var inputCounter = 0;
 
 	const cmd = new CommandInstance({
-		onInput: function (input) {
+		data: function (input) {
 			if (inputCounter === 0) {
 				t.same(input, new Buffer('foo'));
 			} else {
@@ -79,12 +79,12 @@ test.cb('writing to stdin before started triggers onInput after initialization (
 	cmd.start();
 });
 
-test.cb('writing to stdin triggers onInput with chunk and enc', t => {
+test.cb('writing to stdin triggers data with chunk and enc', t => {
 	const chunk = 'Hi!';
 	const enc = 'utf8';
 	const buf = new Buffer(chunk, enc);
 	const cmd = new CommandInstance({
-		onInput: (passedChunk, passedEnc) => {
+		data: (passedChunk, passedEnc) => {
 			t.same(passedChunk, buf);
 			t.same(passedEnc, 'buffer');
 			t.end();
@@ -95,9 +95,9 @@ test.cb('writing to stdin triggers onInput with chunk and enc', t => {
 	cmd.stdin.write(chunk, enc);
 });
 
-test('writing to stdin before started does not directly trigger onInput', t => {
+test('writing to stdin before started does not directly trigger data', t => {
 	const cmd = new CommandInstance({
-		onInput: () => {
+		data: () => {
 			t.fail();
 		}
 	});
@@ -105,11 +105,11 @@ test('writing to stdin before started does not directly trigger onInput', t => {
 	cmd.stdin.write('Hi!');
 });
 
-test('cleanup is called when stdin is ended and no input is processed', t => {
+test('end is called when stdin is ended and no input is processed', t => {
 	t.plan(1);
 
 	const cmd = new CommandInstance({
-		cleanup: () => {
+		end: () => {
 			t.pass();
 			return Promise.resolve();
 		}
@@ -118,19 +118,19 @@ test('cleanup is called when stdin is ended and no input is processed', t => {
 	cmd.stdin.end();
 });
 
-test.cb('cleanup is called when stdin is ended and the last input finishes processing', t => {
-	// indicate whether cleanup has been called
+test.cb('end is called when stdin is ended and the last input finishes processing', t => {
+	// indicate whether end has been called
 	let flag = false;
 
 	const cmd = new CommandInstance({
-		onInput: () => {
+		data: () => {
 			return new Promise((resolve) => {
 				setTimeout(() => {
 					resolve();
 				}, 500);
 			});
 		},
-		cleanup: () => {
+		end: () => {
 			flag = true;
 			return Promise.resolve();
 		}
@@ -144,12 +144,12 @@ test.cb('cleanup is called when stdin is ended and the last input finishes proce
 	cmd.stdin.end();
 
 	setTimeout(() => {
-		// cleanup has not been called while onInput is still working
+		// end has not been called while data is still working
 		t.false(flag);
 	}, 250);
 
 	setTimeout(() => {
-		// cleanup was called by now
+		// end was called by now
 		t.true(flag);
 		t.end();
 	}, 1000);
@@ -168,11 +168,11 @@ test.cb('lifecycle functions have access to options.instanceOptions as this.opti
 			t.is(this.options, opt);
 			return Promise.resolve();
 		},
-		onInput: function () {
+		data: function () {
 			t.is(this.options, opt);
 			return Promise.resolve();
 		},
-		cleanup: function () {
+		end: function () {
 			t.is(this.options, opt);
 			t.end();
 			return Promise.resolve();
@@ -195,11 +195,11 @@ test.cb('lifecycle functions have access to options.operands as this.operands', 
 			t.is(this.operands, ops);
 			return Promise.resolve();
 		},
-		onInput: function () {
+		data: function () {
 			t.is(this.operands, ops);
 			return Promise.resolve();
 		},
-		cleanup: function () {
+		end: function () {
 			t.is(this.operands, ops);
 			t.end();
 			return Promise.resolve();
@@ -224,12 +224,12 @@ test.cb('this.stderr() in a lifecycle function pushes to stderr of the CommandIn
 			this.stderr(data, enc);
 			return Promise.resolve();
 		},
-		onInput: function () {
+		data: function () {
 			this.stderr(data, enc);
 			this.stderr(data, enc);
 			return Promise.resolve();
 		},
-		cleanup: function () {
+		end: function () {
 			this.stderr(data, enc);
 			t.end();
 			return Promise.resolve();
@@ -257,11 +257,11 @@ test.cb('this.stdout() in a lifecycle function pushes to stdout of the CommandIn
 			this.stdout(data, enc);
 			return Promise.resolve();
 		},
-		onInput: function () {
+		data: function () {
 			this.stdout(data, enc);
 			return Promise.resolve();
 		},
-		cleanup: function () {
+		end: function () {
 			this.stdout(data, enc);
 			this.stdout(data, enc);
 			this.stdout(data, enc);
@@ -296,9 +296,9 @@ test.cb('calling exit in a lifecycle function closes stdin', t => {
 
 	cmd1.start();
 
-	// test for onInput
+	// test for data
 	const cmd2 = new CommandInstance({
-		onInput: function () {
+		data: function () {
 			this.exit();
 			return Promise.resolve();
 		}
@@ -311,14 +311,14 @@ test.cb('calling exit in a lifecycle function closes stdin', t => {
 	cmd2.start();
 	cmd2.stdin.write('foo');
 
-	// no test for cleanup, for cleanup to be called, stdin has to have been closed already
+	// no test for end, for end to be called, stdin has to have been closed already
 
 	setTimeout(() => {
 		t.end();
 	}, 500);
 });
 
-test.cb('calling exit leads to cleanup being called', t => {
+test.cb('calling exit leads to end being called', t => {
 	t.plan(1);
 
 	const cmd = new CommandInstance({
@@ -326,7 +326,7 @@ test.cb('calling exit leads to cleanup being called', t => {
 			this.exit();
 			return Promise.resolve();
 		},
-		cleanup: function () {
+		end: function () {
 			t.pass();
 			t.end();
 			return Promise.resolve();
@@ -336,7 +336,7 @@ test.cb('calling exit leads to cleanup being called', t => {
 	cmd.start();
 });
 
-test.cb('cleanup ends stdout and stderr', t => {
+test.cb('end ends stdout and stderr', t => {
 	t.plan(2);
 
 	const cmd = new CommandInstance({
@@ -361,7 +361,7 @@ test.cb('cleanup ends stdout and stderr', t => {
 	cmd.start();
 });
 
-test.cb('if reaching cleanup without an exit call, the exit event has no msg and code 0', t => {
+test.cb('if reaching end without an exit call, the exit event has no msg and code 0', t => {
 	// test for init
 	const cmd = new CommandInstance();
 
@@ -395,7 +395,7 @@ test.cb('calling exit sets the values for the exit event', t => {
 
 test.cb('with multiple exit calls, the first one wins', t => {
 	const cmd = new CommandInstance({
-		onInput: function () {
+		data: function () {
 			this.exit(1, 'foo');
 			this.exit(2, 'bar');
 			return Promise.resolve();
@@ -418,7 +418,7 @@ test.cb('lifecycle functions can communicate by setting attributes of this', t =
 			this.foo = 'bar';
 			return Promise.resolve();
 		},
-		onInput: function () {
+		data: function () {
 			t.is(this.foo, 'bar');
 			t.end();
 			return Promise.resolve();
@@ -493,11 +493,11 @@ test('this.killed in lifecycle methods is true after killed was called', t => {
 	cmd.start();
 });
 
-test('cleanup is called when the CommandInstance is killed and no input is processed', t => {
+test('end is called when the CommandInstance is killed and no input is processed', t => {
 	t.plan(1);
 
 	const cmd = new CommandInstance({
-		cleanup: () => {
+		end: () => {
 			t.pass();
 			return Promise.resolve();
 		}
@@ -506,19 +506,19 @@ test('cleanup is called when the CommandInstance is killed and no input is proce
 	cmd.kill();
 });
 
-test.cb('cleanup is called when the CommandInstance is killed and the last input finishes processing', t => {
-	// indicate whether cleanup has been called
+test.cb('end is called when the CommandInstance is killed and the last input finishes processing', t => {
+	// indicate whether end has been called
 	let flag = false;
 
 	const cmd = new CommandInstance({
-		onInput: () => {
+		data: () => {
 			return new Promise((resolve) => {
 				setTimeout(() => {
 					resolve();
 				}, 500);
 			});
 		},
-		cleanup: () => {
+		end: () => {
 			flag = true;
 			return Promise.resolve();
 		}
@@ -536,13 +536,13 @@ test.cb('cleanup is called when the CommandInstance is killed and the last input
 	}, 0);
 
 	setTimeout(() => {
-		// cleanup has not been called while onInput is still working
+		// end has not been called while data is still working
 		console.log('checking flag nr1');
 		t.false(flag);
 	}, 250);
 
 	setTimeout(() => {
-		// cleanup was called by now
+		// end was called by now
 		console.log('checking flag nr 2');
 		t.true(flag);
 		t.end();

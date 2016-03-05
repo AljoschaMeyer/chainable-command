@@ -19,10 +19,10 @@ function CommandInstance(options) {
 	// flag indicating whether start has been called already
 	var hasStarted = false;
 
-	// flag indicating whether this is waiting to call cleanup
-	var shouldCleanup = false;
+	// flag indicating whether this is waiting to call end
+	var shouldEnd = false;
 
-	// counts how many onInput calls are currently pending
+	// counts how many data calls are currently pending
 	var work = 0;
 
 	// stores the exit code and message as {code: int, msg: string}
@@ -64,7 +64,7 @@ function CommandInstance(options) {
 		} : options.init;
 
 		var afterInit = function () {
-			if (!shouldCleanup) {
+			if (!shouldEnd) {
 				self.stdin.uncork();
 			}
 		};
@@ -76,14 +76,14 @@ function CommandInstance(options) {
 		}
 	};
 
-	// define the cleanup function internally, which at some point calls options.cleanup
-	var cleanup = function () {
+	// define the end function internally, which at some point calls options.end
+	var end = function () {
 		// use the supplied function or a default if none was given
-		var cleanupFn = options.cleanup === undefined ? function () {
+		var endFn = options.end === undefined ? function () {
 			return Promise.resolve();
-		} : options.cleanup;
+		} : options.end;
 
-		var afterCleanup = function () {
+		var afterEnd = function () {
 			self.stdout.push(null);
 			self.stderr.push(null);
 			// set default for the exit code
@@ -95,37 +95,37 @@ function CommandInstance(options) {
 			self.emit('exit', exit.code, exit.msg);
 		};
 
-		cleanupFn.bind(lifecycleSelf)().then(afterCleanup).catch(afterCleanup);
+		endFn.bind(lifecycleSelf)().then(afterEnd).catch(afterEnd);
 	};
 
-	// Checks whether the CommandInstance may cleanup and if so does it.
-	var tryCleanup = function () {
-		if (work === 0 && shouldCleanup) {
-			cleanup();
+	// Checks whether the CommandInstance may end and if so does it.
+	var tryEnd = function () {
+		if (work === 0 && shouldEnd) {
+			end();
 		}
 	};
 
-	// signals to close input, wait for onInputs to resolve and then cleanup
+	// signals to close input, wait for datas to resolve and then end
 	var prepareExit = function () {
-		shouldCleanup = true;
+		shouldEnd = true;
 		self.emit('inputClosed');
-		tryCleanup();
+		tryEnd();
 	};
 
-	// define the onInput function internally, which at some point calls options.onInput
-	var onInput = function (chunk, enc) {
+	// define the data function internally, which at some point calls options.data
+	var data = function (chunk, enc) {
 		// use the supplied function or a default if none was given
-		var onInputFn =	options.onInput === undefined ? function () {
+		var dataFn =	options.data === undefined ? function () {
 			return Promise.resolve();
-		} : options.onInput;
+		} : options.data;
 
 		var afterInput = function () {
 			work--;
-			tryCleanup();
+			tryEnd();
 		};
 
 		work++;
-		onInputFn.bind(lifecycleSelf)(chunk, enc).then(afterInput).catch(afterInput);
+		dataFn.bind(lifecycleSelf)(chunk, enc).then(afterInput).catch(afterInput);
 	};
 
 	/*
@@ -135,12 +135,12 @@ function CommandInstance(options) {
 	// force buffering of all input until the CommandInstance has been initialized
 	this.stdin.cork();
 
-	// delegate input to onInput
+	// delegate input to data
 	this.stdin._write = function (chunc, enc, cb) {
-		if (shouldCleanup) {
+		if (shouldEnd) {
 			cb(new Error('Discarding input, CommandInstance is preparing to exit'));
 		} else {
-			onInput(chunc, enc);
+			data(chunc, enc);
 			cb();
 		}
 	};

@@ -43,7 +43,7 @@ var initFB = function () {
 	return Promise.resolve();
 };
 
-var onInputFB = function (input) {
+var dataFB = function (input) {
 	var number = parseInt(input, 10);
 	if (Number.isNaN(number)) {
 		// method provided by library
@@ -63,15 +63,15 @@ var onInputFB = function (input) {
 	return Promise.resolve();
 };
 
-var cleanupFB = function () {
+var endFB = function () {
 	this.stdout('fizzCount: ' + this.fizzCount + '\n');
 	return Promise.resolve();
 };
 
 var fizzbuzzCommand = new CommandInstance({
 	init: initFB,
-	onInput: onInputFB,
-	cleanup: cleanupFB,
+	data: dataFB,
+	end: endFB,
 	stdinOptions: {objectMode: true},
 	stdoutOptions: {objectMode: true},
 	stderrOptions: {objectMode: true}
@@ -127,7 +127,7 @@ var outCommand = new CommandInstance({
 * Async input handling
 */
 
-var onInputReverse = function (input) {
+var dataReverse = function (input) {
 	var self = this;
 
 	return new Promise(function (resolve) {
@@ -139,7 +139,7 @@ var onInputReverse = function (input) {
 };
 
 var reverseCommand = new CommandInstance({
-	onInput: onInputReverse,
+	data: dataReverse,
 	stdinOptions: {objectMode: true},
 	stdoutOptions: {objectMode: true},
 	stderrOptions: {objectMode: true}

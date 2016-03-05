@@ -12,23 +12,23 @@ This module exports a `CommandInstance` class. A CommandInstance represents a co
 
 The CommandInstance communicates with the outside through events (`inputClosed` and `exit`) and two functions (`start` and `kill`).
 
-The behavior of a CommandInstance, i.e. what it does with input, and which output it produces, is defined through three lifecycle functions passed in the constructor options: `init`, `onInput` and `cleanup`.
+The behavior of a CommandInstance, i.e. what it does with input, and which output it produces, is defined through three lifecycle functions passed in the constructor options: `init`, `data` and `end`.
 
 ### Lifecycle
 The CommandInstance lifecycle is started by calling `commandInstance.start()`. Pushing data to `commandInstance.stdin` before `start()` was called leads to an error.
 
 The `init` lifecycle function is invoked right after `commandInstance.start()` has been called and will only be called once. It has to return a promise. When the promise is resolved (and `exit()` (see below) has not been called in `init`), the input to the `stdin` stream will now be processed.
 
-Each time data is written to `commandInstance.stdin`, the `onInput` lifecycle function is called with the received data and the encoding of the data, i.e. the first two arguments to `Writable._write()`. `onInit` has to return a promise.
+Each time data is written to `commandInstance.stdin`, the `data` lifecycle function is called with the received data and the encoding of the data, i.e. the first two arguments to `Writable._write()`. `onInit` has to return a promise.
 
-The `cleanup` lifecycle function is invoked exactly once, at the end of the CommandInstance lifecycle. It is guaranteed that `init` has been resolved before, and that no `onInput` will be invoked or resolved after `cleanup` has been called. `cleanup` has to return a promise as well. Aside from manually exiting the CommandInstance, `cleanup` is invoked when no further input will be received and no input is currently processed. After cleanup is resolved, `stdout` and `stderr` of the CommandInstance are closed (by pushing null).
+The `end` lifecycle function is invoked exactly once, at the end of the CommandInstance lifecycle. It is guaranteed that `init` has been resolved before, and that no `data` will be invoked or resolved after `end` has been called. `end` has to return a promise as well. Aside from manually exiting the CommandInstance, `end` is invoked when no further input will be received and no input is currently processed. After end is resolved, `stdout` and `stderr` of the CommandInstance are closed (by pushing null).
 
 The three lifecycle functions have some properties bound to `this`:
 - `options`: The hash passed to the CommandInstance constructor as `options.instanceOptions`
 - `operands`: The object passed to the CommandInstance constructor as `options.operands`
 - `stdout(data, enc)`: Pushes data to `commandInstance.stdout` with the encoding `enc` by calling `stream.Readable.push(data, enc)`.
 - `stderr(data, enc)`: Pushes data to `commandInstance.stderr` with the encoding `enc` by calling `stream.Readable.push(data, enc)`.
-- `exit(code, message)`: Causes the CommandInstance to close its input stream, wait for all currently processed input to resolve and then exits by calling `cleanup` and emitting an `'exit'` event. The `'exit'` event contains `code` and `message` All calls to this after the first call are no-ops.
+- `exit(code, message)`: Causes the CommandInstance to close its input stream, wait for all currently processed input to resolve and then exits by calling `end` and emitting an `'exit'` event. The `'exit'` event contains `code` and `message` All calls to this after the first call are no-ops.
 
 ## API
 `import CommandInstance from 'chainable-command';`
@@ -52,22 +52,22 @@ Supported options:
 - `stdoutOptions`: These options are passed to the `stream.Readable` constructor of `instance.stdout`.
 - `stderrOptions`: These options are passed to the `stream.Readable` constructor of `instance.stderr`.
 - `init()`: The init lifecycle function is called exactly once, just before the CommandInstance starts accepting input. Has to return a promise.
-- `onInput(chunk, encoding)`: The onInput lifecycle function is called once for each input received via `instance.stdin` with the received chunk and encoding as arguments. Has to return a promise.
-- `cleanup()`: The cleanup lifecycle function is called exactly once, just before the CommandInstance emits the `'exit'` event. Has to return a promise.
+- `data(chunk, encoding)`: The data lifecycle function is called once for each input received via `instance.stdin` with the received chunk and encoding as arguments. Has to return a promise.
+- `end()`: The end lifecycle function is called exactly once, just before the CommandInstance emits the `'exit'` event. Has to return a promise.
 
 ### Fields
 
-- `stdin`: A writable stream to which may be written before the `'inputClosed'` event. Each write leads to `onInput()` being called with the written chunk and encoding.
+- `stdin`: A writable stream to which may be written before the `'inputClosed'` event. Each write leads to `data()` being called with the written chunk and encoding.
 - `stdout`: A readable stream which may push data during the lifecycle functions.
 - `stderr`: A readable stream which may push data during the lifecycle functions.
 
 ### Instance Methods:
 
 - `start()`: Signals the CommandInstance to start its lifecycle. The streams should be connected before this is called.
-- `kill()`: Signals the CommandInstance to end its lifecycle. It stops accepting new input. Calling does not interrupt `onInput` calls which are currently processing input, but it sets a flag which `onInput` can check to see whether it should terminate early. If called before `init` has been resolved, no input is accepted.
+- `kill()`: Signals the CommandInstance to end its lifecycle. It stops accepting new input. Calling does not interrupt `data` calls which are currently processing input, but it sets a flag which `data` can check to see whether it should terminate early. If called before `init` has been resolved, no input is accepted.
 
 ### Context for the lifecycle functions
-Inside the lifecycle functions (`init`, `onInput` and `cleanup`), `this` is bound to a special lifecycle context, which provides the following fields:
+Inside the lifecycle functions (`init`, `data` and `end`), `this` is bound to a special lifecycle context, which provides the following fields:
 
 - `options`: The options passed to this CommandInstance as `options.instanceOptions`.
 - `killed`: A flag indicating whether kill has been called for this CommandInstance.
