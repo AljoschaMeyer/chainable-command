@@ -56,37 +56,7 @@ test('multiple start() calls do not execute init multiple times', t => {
 	cmd.start();
 });
 
-test.cb('after init is resolved, a \'ready\' event is emitted', t => {
-	// indicate whether the event was emitted
-	let flag = false;
-
-	const cmd = new CommandInstance({
-		init: () => {
-			return new Promise((resolve) => {
-				setTimeout(() => {
-					resolve();
-				}, 500);
-			});
-		}
-	});
-
-	cmd.on('ready', () => {
-		flag = true;
-	});
-
-	cmd.start();
-
-	// make sure event not emitted before init is settled
-	t.false(flag);
-
-	setTimeout(() => {
-		// make sure the event was emitted after init was settled
-		t.true(flag);
-		t.end();
-	}, 1000);
-});
-
-test.cb('writing to stdin before ready triggers onInput after initialization (in the correct order)', t => {
+test.cb('writing to stdin before started triggers onInput after initialization (in the correct order)', t => {
 	var inputCounter = 0;
 
 	const cmd = new CommandInstance({
@@ -102,7 +72,7 @@ test.cb('writing to stdin before ready triggers onInput after initialization (in
 		}
 	});
 
-	// write before ready
+	// write before start
 	cmd.stdin.write('foo');
 	cmd.stdin.write('bar');
 
@@ -121,22 +91,15 @@ test.cb('writing to stdin triggers onInput with chunk and enc', t => {
 		}
 	});
 
-	cmd.on('ready', () => {
-		cmd.stdin.write(chunk, enc);
-	});
-
 	cmd.start();
+	cmd.stdin.write(chunk, enc);
 });
 
-test('writing to stdin before ready does not trigger onInput', t => {
+test('writing to stdin before started does not directly trigger onInput', t => {
 	const cmd = new CommandInstance({
 		onInput: () => {
 			t.fail();
 		}
-	});
-
-	cmd.stdin.on('error', () => {
-		// noop handler so we don't fail on the stdin error
 	});
 
 	cmd.stdin.write('Hi!');
@@ -173,28 +136,28 @@ test.cb('cleanup is called when stdin is ended and the last input finishes proce
 		}
 	});
 
-	cmd.on('ready', () => {
-		cmd.stdin.write('Hi!');
-		cmd.stdin.write('Hi!');
-		cmd.stdin.write('Hi!');
-		cmd.stdin.end();
-
-		setTimeout(() => {
-			// cleanup has not been called while onInput is still working
-			t.false(flag);
-		}, 250);
-
-		setTimeout(() => {
-			// cleanup was called by now
-			t.true(flag);
-			t.end();
-		}, 1000);
-	});
-
 	cmd.start();
+
+	cmd.stdin.write('Hi!');
+	cmd.stdin.write('Hi!');
+	cmd.stdin.write('Hi!');
+	cmd.stdin.end();
+
+	setTimeout(() => {
+		// cleanup has not been called while onInput is still working
+		t.false(flag);
+	}, 250);
+
+	setTimeout(() => {
+		// cleanup was called by now
+		t.true(flag);
+		t.end();
+	}, 1000);
 });
 
 test.cb('lifecycle functions have access to options.instanceOptions as this.options', t => {
+	t.plan(3);
+
 	const opt = {
 		foo: 'bar'
 	};
@@ -216,15 +179,9 @@ test.cb('lifecycle functions have access to options.instanceOptions as this.opti
 		}
 	});
 
-	cmd.on('ready', () => {
-		cmd.stdin.write('Hi!');
-	});
-
 	cmd.start();
-
-	setTimeout(() => {
-		cmd.stdin.end();
-	}, 500);
+	cmd.stdin.write('Hi!');
+	cmd.stdin.end();
 });
 
 test.cb('lifecycle functions have access to options.operands as this.operands', t => {
@@ -249,15 +206,9 @@ test.cb('lifecycle functions have access to options.operands as this.operands', 
 		}
 	});
 
-	cmd.on('ready', () => {
-		cmd.stdin.write('Hi!');
-	});
-
 	cmd.start();
-
-	setTimeout(() => {
-		cmd.stdin.end();
-	}, 500);
+	cmd.stdin.write('Hi!');
+	cmd.stdin.end();
 });
 
 test.cb('this.stderr() in a lifecycle function pushes to stderr of the CommandInstance', t => {
@@ -289,12 +240,9 @@ test.cb('this.stderr() in a lifecycle function pushes to stderr of the CommandIn
 		t.same(chunk, new Buffer(data, enc));
 	});
 
-	cmd.on('ready', () => {
-		cmd.stdin.write('Hi!');
-		cmd.stdin.end();
-	});
-
 	cmd.start();
+	cmd.stdin.write('Hi!');
+	cmd.stdin.end();
 });
 
 test.cb('this.stdout() in a lifecycle function pushes to stdout of the CommandInstance', t => {
@@ -326,12 +274,9 @@ test.cb('this.stdout() in a lifecycle function pushes to stdout of the CommandIn
 		t.same(chunk, new Buffer(data, enc));
 	});
 
-	cmd.on('ready', () => {
-		cmd.stdin.write('Hi!');
-		cmd.stdin.end();
-	});
-
 	cmd.start();
+	cmd.stdin.write('Hi!');
+	cmd.stdin.end();
 });
 
 test.cb('calling exit in a lifecycle function closes stdin', t => {
@@ -363,11 +308,8 @@ test.cb('calling exit in a lifecycle function closes stdin', t => {
 		t.pass();
 	});
 
-	cmd2.on('ready', () => {
-		cmd2.stdin.write('foo');
-	});
-
 	cmd2.start();
+	cmd2.stdin.write('foo');
 
 	// no test for cleanup, for cleanup to be called, stdin has to have been closed already
 
@@ -423,16 +365,13 @@ test.cb('if reaching cleanup without an exit call, the exit event has no msg and
 	// test for init
 	const cmd = new CommandInstance();
 
-	cmd.on('ready', () => {
-		cmd.stdin.end();
-	});
-
 	cmd.on('exit', (code) => {
 		t.is(code, 0);
 		t.end();
 	});
 
 	cmd.start();
+	cmd.stdin.end();
 });
 
 test.cb('calling exit sets the values for the exit event', t => {
@@ -469,11 +408,8 @@ test.cb('with multiple exit calls, the first one wins', t => {
 		t.end();
 	});
 
-	cmd.on('ready', () => {
-		cmd.stdin.write('hi');
-	});
-
 	cmd.start();
+	cmd.stdin.write('hi');
 });
 
 test.cb('lifecycle functions can communicate by setting attributes of this', t => {
@@ -489,11 +425,8 @@ test.cb('lifecycle functions can communicate by setting attributes of this', t =
 		}
 	});
 
-	cmd.on('ready', () => {
-		cmd.stdin.write('hi');
-	});
-
 	cmd.start();
+	cmd.stdin.write('hi');
 });
 
 test.cb('writing null to stderr throws an error', t => {
@@ -579,37 +512,45 @@ test.cb('cleanup is called when the CommandInstance is killed and the last input
 
 	const cmd = new CommandInstance({
 		onInput: () => {
-			return new Promise((resolve) => {
-				setTimeout(() => {
-					resolve();
-				}, 500);
-			});
+			console.log('start onInput');
+			return Promise.resolve();
+			// return new Promise((resolve) => {
+				// setTimeout(() => {
+					// console.log('about to resolve onInput');
+					// resolve();
+				// }, 500);
+			// });
 		},
 		cleanup: () => {
+			console.log('called cleanup');
 			flag = true;
 			return Promise.resolve();
 		}
 	});
 
-	cmd.on('ready', () => {
-		cmd.stdin.write('Hi!');
-		cmd.stdin.write('Hi!');
-		cmd.stdin.write('Hi!');
-		cmd.kill();
-
-		setTimeout(() => {
-			// cleanup has not been called while onInput is still working
-			t.false(flag);
-		}, 250);
-
-		setTimeout(() => {
-			// cleanup was called by now
-			t.true(flag);
-			t.end();
-		}, 1000);
-	});
-
+	console.log('about to start');
 	cmd.start();
+	console.log('write 1');
+	cmd.stdin.write('Hi!');
+	console.log('write 2');
+	cmd.stdin.write('Hi!');
+	console.log('write 3');
+	cmd.stdin.write('Hi!');
+	console.log('about to kill');
+	cmd.kill();
+
+	setTimeout(() => {
+		// cleanup has not been called while onInput is still working
+		console.log('checking flag nr1');
+		t.false(flag);
+	}, 10);
+
+	setTimeout(() => {
+		// cleanup was called by now
+		console.log('checking flag nr 2');
+		t.true(flag);
+		t.end();
+	}, 1000);
 });
 
 test('inputClosed is emitted when stdin is ended', t => {

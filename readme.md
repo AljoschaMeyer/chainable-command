@@ -10,16 +10,16 @@ This is a low-level implementation of a command class which communicates with ot
 ### General
 This module exports a `CommandInstance` class. A CommandInstance represents a command in a command chain. It communicates via three streams: A writable `stdin`, a readable `stdout` and a readable `stderr`. In a typical usecase, the `stdout` of a CommandInstance would be piped into the `stdin` of the next command instance.
 
-The CommandInstance communicates with the outside through events (`ready`, `inputClosed` and `exit`) and two functions (`start` and `kill`).
+The CommandInstance communicates with the outside through events (`inputClosed` and `exit`) and two functions (`start` and `kill`).
 
 The behavior of a CommandInstance, i.e. what it does with input, and which output it produces, is defined through three lifecycle functions passed in the constructor options: `init`, `onInput` and `cleanup`.
 
 ### Lifecycle
 The CommandInstance lifecycle is started by calling `commandInstance.start()`. Pushing data to `commandInstance.stdin` before `start()` was called leads to an error.
 
-The `init` lifecycle function is invoked right after `commandInstance.start()` has been called and will only be called once. It has to return a promise. When the promise is resolved (and `exit()` (see below) has not been called in `init`), a `'ready'` event is emitted by the CommandInstance, signaling that the input to the `stdin` stream will now be processed.
+The `init` lifecycle function is invoked right after `commandInstance.start()` has been called and will only be called once. It has to return a promise. When the promise is resolved (and `exit()` (see below) has not been called in `init`), the input to the `stdin` stream will now be processed.
 
-Each time data is written to `commandInstance.stdin`, the `onInput` lifecycle function is called with the received data and the encoding of the data, i.e. the first two arguments to `Writable._write()`. All incoming data before the CommandInstance has emitted its `'ready'` event is processed right before the event is emitted. `onInit` has to return a promise.
+Each time data is written to `commandInstance.stdin`, the `onInput` lifecycle function is called with the received data and the encoding of the data, i.e. the first two arguments to `Writable._write()`. `onInit` has to return a promise.
 
 The `cleanup` lifecycle function is invoked exactly once, at the end of the CommandInstance lifecycle. It is guaranteed that `init` has been resolved before, and that no `onInput` will be invoked or resolved after `cleanup` has been called. `cleanup` has to return a promise as well. Aside from manually exiting the CommandInstance, `cleanup` is invoked when no further input will be received and no input is currently processed. After cleanup is resolved, `stdout` and `stderr` of the CommandInstance are closed (by pushing null).
 
@@ -36,7 +36,6 @@ The three lifecycle functions have some properties bound to `this`:
 Instances of CommandInstance are EventEmitters.
 
 #### Events:
-- `'ready'`: The CommandInstance is ready to process input. Writes to `instance.stdin` before the `'ready'` event was emited are buffered. Those are processed just before `'ready'` is emitted.
 - `'inputClosed'`: Emitted when `instance.stdin` stops accepting input.
 - `'exit'`: The CommandInstance has reached the end of its lifecycle. All streams are closed, no input is still processed. Emitting this event is the last thing a CommandInstance does.
   - `code`: The exit code. Defaults to `0` if it has not been explicitely set in one of the lifecycle functions via `exit(code, msg)`.

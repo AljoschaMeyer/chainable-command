@@ -66,7 +66,6 @@ function CommandInstance(options) {
 		var afterInit = function () {
 			if (!shouldCleanup) {
 				self.stdin.uncork();
-				self.emit('ready');
 			}
 		};
 
